@@ -6,6 +6,7 @@ pub const EXTENDED_HEADER_SIZE: usize = 24;
 #[derive(Debug)]
 pub enum Error {
     BufferError(String),
+    ParseError(String),
 }
 
 #[allow(non_camel_case_types)]
@@ -125,9 +126,11 @@ impl Into<u16> for Command {
         }
     }
 }
-impl From<u16> for Command {
-    fn from(val: u16) -> Self {
-         match val {
+impl std::convert::TryFrom<u16> for Command {
+    type Error = Error;
+
+    fn try_from(val: u16) -> Result<Self, Error> {
+         Ok(match val {
             0x00 => Command::CA_PROTO_VERSION,
             0x06 => Command::CA_PROTO_SEARCH,
             0x0E => Command::CA_PROTO_NOT_FOUND,
@@ -155,7 +158,9 @@ impl From<u16> for Command {
             0x19 => Command::CA_PROTO_SIGNAL,
             0x1A => Command::CA_PROTO_CREATE_CH_FAIL,
             0x1B => Command::CA_PROTO_SERVER_DISCONN,
-        }       
+
+            _ => return Err(Error::ParseError("Value is not a valid command ID".into()))
+        })       
     }
 }
 
@@ -287,7 +292,7 @@ impl MessageHeader {
             parameter_2:  u32::from_be_bytes(buf[12..].try_into().unwrap()),
         })
     }
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut buf: Vec<u8> = Vec::with_capacity(HEADER_SIZE);
         buf.append(&mut self.command.to_be_bytes().to_vec());
         buf.append(&mut self.payload_size.to_be_bytes().to_vec());
@@ -296,7 +301,7 @@ impl MessageHeader {
         buf.append(&mut self.parameter_1.to_be_bytes().to_vec());
         buf.append(&mut self.parameter_2.to_be_bytes().to_vec());
 
-        buf.as_slice()
+        buf
     }
 }
 
