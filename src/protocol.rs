@@ -1,3 +1,13 @@
+use std::convert::TryInto;
+
+pub const HEADER_SIZE: usize = 16;
+pub const EXTENDED_HEADER_SIZE: usize = 24;
+
+#[derive(Debug)]
+pub enum Error {
+    BufferError(String),
+}
+
 #[allow(non_camel_case_types)]
 pub enum Command {
     /// UDP/TCP (0x00) Exchanges client and server protocol versions and desired circuit priority. MUST be the first message sent, by both client and server, when a new TCP (Virtual Circuit) connection is established. It is also sent as the first message in UDP search messages.
@@ -81,6 +91,74 @@ pub enum Command {
     /// TCP (0x1B) Notifies the client that server has disconnected the channel. This may be since the channel has been destroyed on server.
     CA_PROTO_SERVER_DISCONN,
 }
+impl Into<u16> for Command {
+    /// Returns ID value of the command variant as u16
+    fn into(self) -> u16 {
+        match self {
+            Command::CA_PROTO_VERSION => 0x00,
+            Command::CA_PROTO_SEARCH => 0x06,
+            Command::CA_PROTO_NOT_FOUND => 0x0E,
+            Command::CA_PROTO_RSRV_IS_UP => 0x0D,
+            Command::CA_REPEATER_CONFIRM => 0x11,
+            Command::CA_REPEATER_REGISTER => 0x18,
+            Command::CA_PROTO_EVENT_ADD => 0x01,
+            Command::CA_PROTO_EVENT_CANCEL => 0x02,
+            Command::CA_PROTO_READ => 0x03,
+            Command::CA_PROTO_WRITE => 0x04,
+            Command::CA_PROTO_SNAPSHOT => 0x05,
+            Command::CA_PROTO_BUILD => 0x07,
+            Command::CA_PROTO_EVENTS_OFF => 0x08,
+            Command::CA_PROTO_EVENTS_ON => 0x09,
+            Command::CA_PROTO_READ_SYNC => 0x0A,
+            Command::CA_PROTO_CLEAR_CHANNEL => 0x0C,
+            Command::CA_PROTO_READ_NOTIFY => 0x0F,
+            Command::CA_PROTO_READ_BUILD => 0x10,
+            Command::CA_PROTO_CREATE_CHAN => 0x12,
+            Command::CA_PROTO_WRITE_NOTIFY => 0x13,
+            Command::CA_PROTO_CLIENT_NAME => 0x14,
+            Command::CA_PROTO_HOST_NAME => 0x15,
+            Command::CA_PROTO_ACCESS_RIGHTS => 0x16,
+            Command::CA_PROTO_ECHO => 0x17,
+            Command::CA_PROTO_SIGNAL => 0x19,
+            Command::CA_PROTO_CREATE_CH_FAIL => 0x1A,
+            Command::CA_PROTO_SERVER_DISCONN => 0x1B,
+        }
+    }
+}
+impl From<u16> for Command {
+    fn from(val: u16) -> Self {
+         match val {
+            0x00 => Command::CA_PROTO_VERSION,
+            0x06 => Command::CA_PROTO_SEARCH,
+            0x0E => Command::CA_PROTO_NOT_FOUND,
+            0x0D => Command::CA_PROTO_RSRV_IS_UP,
+            0x11 => Command::CA_REPEATER_CONFIRM,
+            0x18 => Command::CA_REPEATER_REGISTER,
+            0x01 => Command::CA_PROTO_EVENT_ADD,
+            0x02 => Command::CA_PROTO_EVENT_CANCEL,
+            0x03 => Command::CA_PROTO_READ,
+            0x04 => Command::CA_PROTO_WRITE,
+            0x05 => Command::CA_PROTO_SNAPSHOT,
+            0x07 => Command::CA_PROTO_BUILD,
+            0x08 => Command::CA_PROTO_EVENTS_OFF,
+            0x09 => Command::CA_PROTO_EVENTS_ON,
+            0x0A => Command::CA_PROTO_READ_SYNC,
+            0x0C => Command::CA_PROTO_CLEAR_CHANNEL,
+            0x0F => Command::CA_PROTO_READ_NOTIFY,
+            0x10 => Command::CA_PROTO_READ_BUILD,
+            0x12 => Command::CA_PROTO_CREATE_CHAN,
+            0x13 => Command::CA_PROTO_WRITE_NOTIFY,
+            0x14 => Command::CA_PROTO_CLIENT_NAME,
+            0x15 => Command::CA_PROTO_HOST_NAME,
+            0x16 => Command::CA_PROTO_ACCESS_RIGHTS,
+            0x17 => Command::CA_PROTO_ECHO,
+            0x19 => Command::CA_PROTO_SIGNAL,
+            0x1A => Command::CA_PROTO_CREATE_CH_FAIL,
+            0x1B => Command::CA_PROTO_SERVER_DISCONN,
+        }       
+    }
+}
+
 
 #[allow(non_camel_case_types)]
 pub enum DataType {
@@ -179,43 +257,69 @@ pub enum DataType {
 
 pub struct MessageHeader {
     /// Identifier of the command this message requests. The meaning of other header fields and the payload depends on the command.
-    command: u16,
+    pub command: u16,
 
     /// Size of the payload (in bytes). Must not exceed 0x4000. Value of 0xFFFF indicates extended message.
-    payload_size: u16,
+    pub payload_size: u16,
 
     /// Identifier of the data type carried in the payload.
-    data_type: u16,
+    pub data_type: u16,
 
     /// Number of elements in the payload.
-    data_count: u16,
+    pub data_count: u16,
 
     /// Command-dependent parameter
-    parameter_1: u32,
+    pub parameter_1: u32,
     /// Command-dependent parameter
-    parameter_2: u32,
+    pub parameter_2: u32,
+}
+impl MessageHeader {
+    pub fn from_bytes(buf: &[u8]) -> Result<Self, Error> {
+        if buf.len() != HEADER_SIZE {
+            return Err(Error::BufferError(format!("Expected {}-byte buffer", HEADER_SIZE)))
+        }
+        Ok(Self {
+            command:      u16::from_be_bytes(buf[0..2].try_into().unwrap()),
+            payload_size: u16::from_be_bytes(buf[2..4].try_into().unwrap()),
+            data_type:    u16::from_be_bytes(buf[4..6].try_into().unwrap()),
+            data_count:   u16::from_be_bytes(buf[6..8].try_into().unwrap()),
+            parameter_1:  u32::from_be_bytes(buf[8..12].try_into().unwrap()),
+            parameter_2:  u32::from_be_bytes(buf[12..].try_into().unwrap()),
+        })
+    }
+    pub fn as_bytes(&self) -> &[u8] {
+        let mut buf: Vec<u8> = Vec::with_capacity(HEADER_SIZE);
+        buf.append(&mut self.command.to_be_bytes().to_vec());
+        buf.append(&mut self.payload_size.to_be_bytes().to_vec());
+        buf.append(&mut self.data_type.to_be_bytes().to_vec());
+        buf.append(&mut self.data_count.to_be_bytes().to_vec());
+        buf.append(&mut self.parameter_1.to_be_bytes().to_vec());
+        buf.append(&mut self.parameter_2.to_be_bytes().to_vec());
+
+        buf.as_slice()
+    }
 }
 
 pub struct ExtendedMessageHeader {
     /// Identifier of the command this message requests. The meaning of other header fields and the payload depends on the command.
-    command: u16,
+    pub command: u16,
 
     // Extended Message Marker: 0xFFFF,
     
     /// Identifier of the data type carried in the payload.
-    data_type: u16,
+    pub data_type: u16,
     
     // Extended Message Marker: 0x0000,
     
     /// Command-dependent parameter
-    parameter_1: u32,
+    pub parameter_1: u32,
 
     /// Command-dependent parameter
-    parameter_2: u32,
+    pub parameter_2: u32,
 
     /// Size of the payload (in bytes). Must not exceed 0x4000. Value of 0xFFFF indicates extended message.
-    payload_size: u32,
+    pub payload_size: u32,
 
     /// Number of elements in the payload.
-    data_count: u32,
+    pub data_count: u32,
 }
