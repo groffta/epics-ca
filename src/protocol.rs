@@ -2,82 +2,82 @@
 pub enum Command {
     /// UDP/TCP (0x00) Exchanges client and server protocol versions and desired circuit priority. MUST be the first message sent, by both client and server, when a new TCP (Virtual Circuit) connection is established. It is also sent as the first message in UDP search messages.
     CA_PROTO_VERSION,
-
+    
     /// UDP/TCP (0x06) Searches for a given channel name.
     CA_PROTO_SEARCH,
-
+    
     /// UDP (0x0E) Indicates that a channel with requested name does not exist. Sent in response to CA_PROTO_SEARCH, but only when its DO_REPLY flag was set.
     CA_PROTO_NOT_FOUND,
-
-    /// TCP (0x17) Connection verify used by CA_V43.
-    CA_PROTO_ECHO,
-
+    
     /// UDP (0x0D) Beacon sent by a server when it becomes available. Beacons are also sent out periodically to announce the server is still alive. Another function of beacons is to allow detection of changes in network topology.
     CA_PROTO_RSRV_IS_UP,
-
+    
     /// UDP (0x11) Confirms successful client registration with repeater.
     CA_REPEATER_CONFIRM,
-
-    /// TCP (0x18) Requests registration with the repeater. Repeater will confirm successful registration using CA_REPEATER_CONFIRM.
+    
+    /// UDP (0x18) Requests registration with the repeater. Repeater will confirm successful registration using CA_REPEATER_CONFIRM.
     CA_REPEATER_REGISTER,
-
+    
     /// TCP (0x01) Creates a subscription on a channel, allowing the client to be notified of changes in value. A request will produce at least one response.
     CA_PROTO_EVENT_ADD,
-
+    
     /// TCP (0x02) Clears event subscription. This message will stop event updates for specified channel.
     CA_PROTO_EVENT_CANCEL,
-
+    
     /// TCP (0x03) Read value of a channel. DEPRECATED since v3.13
     CA_PROTO_READ,
-
+    
     /// TCP (0x04) Writes new channel value.
     CA_PROTO_WRITE,
-
+    
     /// TCP (0x05) Obsolete.
     CA_PROTO_SNAPSHOT,
-
+    
     /// TCP (0x07) Obsolete.
     CA_PROTO_BUILD,
-
+    
     /// TCP (0x08) Disables a server from sending any subscription updates over this virtual circuit.
     CA_PROTO_EVENTS_OFF,
-
+    
     /// TCP (0x09) Enables the server to resume sending subscription updates for this virtual circuit.
     CA_PROTO_EVENTS_ON,
-
+    
     /// TCP (0x0A) DEPRECATED since v3.13
     CA_PROTO_READ_SYNC,
-
+    
     /// TCP (0x0C) Clears a channel. This command will cause server to release the associated channel resources and no longer accept any requests for this SID/CID.
     CA_PROTO_CLEAR_CHANNEL,
-
+    
     /// TCP (0x0F) Read value of a channel.
     CA_PROTO_READ_NOTIFY,
-
+    
     /// TCP (0x10) Obsolete,
     CA_PROTO_READ_BUILD,
-
+    
     /// TCP (0x12) Requests creation of channel. Server will allocate required resources and return initialized SID.
     CA_PROTO_CREATE_CHAN,
-
+    
     /// TCP (0x13) Writes new channel value.
     CA_PROTO_WRITE_NOTIFY,
-
+    
     /// TCP (0x14) Sends local username to virtual circuit peer. This name identifies the user and affects access rights.
     CA_PROTO_CLIENT_NAME,
-
+    
     /// TCP (0x15) Sends local host name to virtual circuit peer. This name will affect access rights.
     CA_PROTO_HOST_NAME,
-
+    
     /// TCP (0x16) Notifies of access rights for a channel. This value is determined based on host and client name and may change during runtime. Client cannot change access rights nor can it explicitly query its value, so last received value must be stored.
     CA_PROTO_ACCESS_RIGHTS,
-
+    
+    /// TCP (0x17) Connection verify used by CA_V43.
+    CA_PROTO_ECHO,
+    
     /// TCP (0x19) Obsolete.
     CA_PROTO_SIGNAL,
-
+    
     /// TCP (0x1A) Reports that channel creation failed. This response is sent to when channel creation in CA_PROTO_CREATE_CHAN fails.
     CA_PROTO_CREATE_CH_FAIL,
-
+    
     /// TCP (0x1B) Notifies the client that server has disconnected the channel. This may be since the channel has been destroyed on server.
     CA_PROTO_SERVER_DISCONN,
 }
