@@ -2,9 +2,11 @@
 name = "epics-ca"
 description = "epics-ca is a pure Rust implementation of the EPICS Channel Access Protocol"
 authors = ["Todd Groff <groffta@ornl.gov>"]
+repository = "https://github.com/groffta/epics-ca"
+homepage = ""
 version = "0.0.1"
 edition = "2018"
-license = "EPICS Open License"
+license = "EPICS"
 license-file = "LICENSE.txt"
 
 [dependencies]
