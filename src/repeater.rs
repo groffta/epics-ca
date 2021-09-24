@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket}};
+use std::{convert::TryFrom, net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket}, str::FromStr};
 
 use crate::protocol::{
     HEADER_SIZE,
@@ -8,33 +8,23 @@ use crate::protocol::{
 
 use log::{info, warn, error};
 
-
 /// Initializes a new repeater or connects to an existing repeater and returns a bound UDP socket for receiving messages.
-pub fn init() -> UdpSocket {
+pub fn init() {
     // Check for existing repeater by attempting to bind to repeater port
-    match UdpSocket::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0,0,0,0,)), crate::CA_REPEATER_PORT)) {
-        Ok(socket) => {
-            // No repeater bound. Close socket and spawn a new repeater.
-            drop(socket);
-            spawn_repeater()
-        }
-        Err(_e) => {
-            // A repeater is already bound. Perform repeater registration.
-            register()
-        }
+    if let Ok(socket) = UdpSocket::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0,0,0,0,)), crate::CA_REPEATER_PORT)) {
+        // No repeater bound. Close socket and spawn a new repeater.
+        drop(socket);
+        spawn_repeater()
     }
 }
 
-/// Spawns a new repeater on a seperate thread and returns a bopund UDP socket for receiving messages
-fn spawn_repeater() -> UdpSocket {
+/// Spawns a new repeater on a seperate thread listening for incoming registrations and server beacons.
+fn spawn_repeater() {
     info!("Spawning new repeater on 0.0.0.0:{}", crate::CA_REPEATER_PORT);
-    todo!()
-}
-
-/// Performs registration handshake with an existing local repeater and returns a bound UDP socket for receiving messages.
-fn register() -> UdpSocket {
-    info!("Registering with existing repeater at 127.0.0.1:{}", crate::CA_REPEATER_PORT);
-    todo!()
+    std::thread::spawn(move || {
+        let mut repeater = Repeater::new("0.0.0.0");
+        repeater.listen();
+    });
 }
 
 #[derive(Debug)]
@@ -48,8 +38,8 @@ pub struct Repeater {
     registered_clients: Vec<RegisteredClient>,
 }
 impl Repeater {
-    pub fn new() -> Self {
-        let socket = UdpSocket::bind(format!("0.0.0.0:{}", crate::CA_REPEATER_PORT)).expect("Only a single repeater should be created per host");
+    pub fn new(bind_addr: &str) -> Self {
+        let socket = UdpSocket::bind(format!("{}:{}", bind_addr, crate::CA_REPEATER_PORT)).expect("Only a single repeater should be created per host");
         Self {
             socket,
             registered_clients: vec!()
@@ -146,6 +136,7 @@ impl Repeater {
                         forward_socket: client_socket,
                     };
 
+                    info!("Registered new client: {:?}", client);
                     self.registered_clients.push(client);
 
                 },
@@ -159,4 +150,3 @@ impl Repeater {
         }
     }
 }
-impl Default for Repeater { fn default() -> Self { Self::new() }}

@@ -19,16 +19,21 @@ pub const CA_REPEATER_PORT: u16 = CA_PORT_BASE + MAJOR_PROTOCOL_VERSION *2 + 1;
 
 // Other Constants
 const CA_SERVER_BEACON_MAX_PERIOD: f64 = 15.0;
+const LOCALHOST_U32: u32 = 0x7F000001;
 
 
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::net::UdpSocket;
 
     #[test]
     fn test() {
+        pretty_env_logger::init();
 
+        let client = client::Client::new().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(1000))
     }
 }
 
