@@ -30,11 +30,14 @@ mod tests {
     use std::net::UdpSocket;
 
     #[test]
-    fn test() {
+    fn client_registration() {
+        std::env::set_var("RUST_LOG", "trace");
         pretty_env_logger::init();
 
         let client = client::Client::new().unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(1000))
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        assert!(client.is_registered());
     }
 }
 

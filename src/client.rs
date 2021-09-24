@@ -10,7 +10,7 @@ use crate::protocol::{
     Command,
 };
 
-use log::{info, warn, error, trace};
+use log::{info, warn, error, debug, trace};
 
 const UPDATE_PERIOD: f64 = 0.5;
 
@@ -43,6 +43,7 @@ pub struct Client {
 impl Client {
     pub fn new() -> Result<Self, Error> {
         repeater::init();
+        //std::thread::sleep(std::time::Duration::from_millis(10));
         let mut instance = Self {
             repeater_socket: Arc::new(Mutex::new(UdpSocket::bind("127.0.0.1:0")?)),
             registered: Arc::new(Mutex::new(false)),
@@ -83,7 +84,7 @@ impl Client {
         ) {
             return Err(Error::IoError(format!("Could not send registration packet: {:?}", e)))
         }
-        
+        debug!("Registration message sent");
         Ok(())
     }
 
@@ -92,6 +93,7 @@ impl Client {
         let (tx, rx) = channel::<bool>();
 
         let socket = self.repeater_socket.clone();
+        let registered = self.registered.clone();
 
         std::thread::spawn(move || {
             let mut packet_buf = [0u8; crate::protocol::HEADER_SIZE];
@@ -103,8 +105,8 @@ impl Client {
                     match Command::try_from(header.command) {
                         Ok(Command::CA_REPEATER_CONFIRM) => {
                             // Store repeater confirmation
-                            info!("Received registration confirmation from repeater");
-                            todo!()
+                            debug!("Received registration confirmation from repeater");
+                            *registered.lock().unwrap() = true;
                         },
                         Ok(Command::CA_PROTO_RSRV_IS_UP) => {
                             // Update server list

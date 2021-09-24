@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket}, str::FromStr};
+use std::{convert::TryFrom, net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket}, str::FromStr, sync::mpsc::Sender};
 
 use crate::protocol::{
     HEADER_SIZE,
@@ -6,7 +6,7 @@ use crate::protocol::{
     Command,
 };
 
-use log::{info, warn, error};
+use log::{info, warn, error, debug, trace};
 
 /// Initializes a new repeater or connects to an existing repeater and returns a bound UDP socket for receiving messages.
 pub fn init() {
@@ -18,13 +18,19 @@ pub fn init() {
     }
 }
 
-/// Spawns a new repeater on a seperate thread listening for incoming registrations and server beacons.
+/// Spawns a new repeater on a seperate thread listening for incoming registrations and server beacons. Blocks until repeater is ready to receive messages.
 fn spawn_repeater() {
     info!("Spawning new repeater on 0.0.0.0:{}", crate::CA_REPEATER_PORT);
+
+    let (tx, rx) = std::sync::mpsc::channel::<bool>();
+
     std::thread::spawn(move || {
         let mut repeater = Repeater::new("0.0.0.0");
-        repeater.listen();
+
+        repeater.listen(tx);
     });
+
+    rx.recv().unwrap();
 }
 
 #[derive(Debug)]
@@ -46,11 +52,13 @@ impl Repeater {
         }
     }
     /// Begins receiving and processing CA_PROTO_RSRV_IS_UP and CA_REPEATER_REGISTER messages
-    pub fn listen(&mut self) {
+    pub fn listen(&mut self, ready_sender: Sender<bool>) {
         // Only CA_PROTO_RSRV_IS_UP and CA_REPEATER_REGISTER should be received which consist of only a 16-byte header
         let mut buf = [0u8; HEADER_SIZE];
 
+        ready_sender.send(true).unwrap();
         'recv: while let Ok((amt, src)) = self.socket.recv_from(&mut buf) {
+            trace!("Received UDP Packet");
             // Validate IPv4
             if !src.is_ipv4() {
                 warn!("IPv6 sockets are not supported");
