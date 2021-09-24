@@ -39,7 +39,7 @@ fn register() -> UdpSocket {
 
 #[derive(Debug)]
 struct RegisteredClient {
-    client_address: SocketAddr,
+    remote_address: SocketAddr,
     forward_socket: UdpSocket,
 }
 
@@ -60,7 +60,7 @@ impl Repeater {
         // Only CA_PROTO_RSRV_IS_UP and CA_REPEATER_REGISTER should be received which consist of only a 16-byte header
         let mut buf = [0u8; HEADER_SIZE];
 
-        while let Ok((amt, src)) = self.socket.recv_from(&mut buf) {
+        'recv: while let Ok((amt, src)) = self.socket.recv_from(&mut buf) {
             // Validate IPv4
             if !src.is_ipv4() {
                 warn!("IPv6 sockets are not supported");
@@ -79,7 +79,12 @@ impl Repeater {
             match Command::try_from(header.command) {
                 // Forward server beacon to all registered clients
                 Ok(Command::CA_PROTO_RSRV_IS_UP) => {
-                    todo!();
+                    for client in &self.registered_clients {
+                        if let Err(e) = client.forward_socket.send_to(&buf, client.remote_address) {
+                            error!("Could not forward message to {:?}: {:?}", client.remote_address, e);
+                            continue;
+                        }
+                    }
                 },
 
                 // Register client and send confirmation message
@@ -87,7 +92,15 @@ impl Repeater {
                     // Validate registration address matches source address
                     let addr_buf: [u8;4] = header.parameter_2.to_be_bytes();
                     let received_addr = Ipv4Addr::new(addr_buf[0], addr_buf[1], addr_buf[2], addr_buf[3]);
-                    let src_addr: IpAddr = src.ip().into();
+                    let src_addr: IpAddr = src.ip();
+
+                    // Check if client is already registered
+                    for client in &self.registered_clients {
+                        if client.remote_address == src {
+                            warn!("Client is already registered");
+                            continue 'recv;
+                        }
+                    }   
 
                     if received_addr != src_addr {
                         warn!("Registration address does not match socket address!");
@@ -129,7 +142,7 @@ impl Repeater {
 
                     // Create new client record and add to registered_clients
                     let client = RegisteredClient {
-                        client_address: src,
+                        remote_address: src,
                         forward_socket: client_socket,
                     };
 
