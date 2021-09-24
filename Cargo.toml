@@ -1,9 +1,11 @@
 [package]
 name = "epics-ca"
+description = "epics-ca is a pure Rust implementation of the EPICS Channel Access Protocol"
+authors = ["Todd Groff <groffta@ornl.gov>"]
 version = "0.0.1"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "EPICS Open License"
+license-file = "LICENSE.txt"
 
 [dependencies]
 log = "0.4.14"
